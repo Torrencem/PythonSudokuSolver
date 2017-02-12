@@ -13,7 +13,7 @@ class square:
     def __str__(self):
         if not self.solved:
             return '^' + str(len(self.possibilities))
-        return str(self.value) * 2
+        return str(self.value) + '&'
 
 
 
