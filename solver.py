@@ -1,5 +1,6 @@
 import numpy as np
 import math
+from copy import deepcopy
 class square:
     def __init__(self, solved, value):
         self.value = value
@@ -67,9 +68,14 @@ def sieveLimit(data):
                 modr = returndat[xindex, i]
                 if not modr.solved and sqr.value in modr.possibilities:
                     modr.possibilities.remove(sqr.value)
+                elif modr.solved and modr.value == sqr.value and i != yindex:
+                    # There is a contradiction!!
+                    return False
                 modc = returndat[i, yindex]
                 if not modc.solved and sqr.value in modc.possibilities:
                     modc.possibilities.remove(sqr.value)
+                elif modc.solved and modc.value == sqr.value and i != xindex:
+                    return False
 
             # And also the same minisquare
             minisqr = getblock((xindex,yindex))
@@ -82,6 +88,10 @@ def sieveLimit(data):
                         if sqr.value in b.possibilities:
                             b.possibilities.remove(sqr.value)
                             returndat[x2,y2] = b
+                    elif getblock((x2,y2)) == minisqr and sqr2.solved and sqr.value == sqr2.value\
+                            and (x2 != xindex or y2 != yindex):
+                        # Contradiction!
+                        return False
             # Now we have removed the impossible possibilities for this square
     return returndat
 
@@ -92,13 +102,103 @@ while True:
     if b is None:
         break
     data = b
-    print(data)
 print(data)
-# experiment = []
-# for x in range(9):
-#     print(x)
-#     temprow = []
-#     for y in range(9):
-#         temprow.append(getblock((x,y)))
-#     experiment.append(temprow)
-# print(np.array(experiment))
+# Check if is entirely complete
+def checkComplete(data):
+    for row in data:
+        for sqr in row:
+            if not sqr.solved:
+                return False
+    return True
+if checkComplete(data):
+    print('Done!')
+    exit()
+
+# Not done yet...
+
+# Checks for contradictions (zero possibilities)
+def checkContr(data):
+    for row in data:
+        for sqr in row:
+            if len(sqr.possibilities) == 0:
+                return True
+
+    # We need to check for another kind of contradiction:
+    # Where there are two squares in the same row/col that want to
+    # be the same thing
+    # Sievelimit offers this thing
+    a = sieveLimit(data)
+    if a is False:
+        return True
+    return False
+
+# Now we've gotta start branching
+
+# Doesn't really act as a dictionary, but as a list
+alreadyTried = {}
+
+# A list of 'undo's
+stack = []
+
+# What guess we are currently trying
+trying = None
+
+while not checkComplete(data):
+    # print(data)
+    if checkContr(data):
+        # We've reached a contradiction
+        # Restore last stack
+        # print(stack)
+        data = stack.pop()
+        # Add trying to the alreadyTried
+        alreadyTried[str(data)] = trying
+        trying = None
+        # print(data)
+        print('Reverting!')
+        continue
+
+    data = sieveLimit(data)
+    # print(data)
+    reduce = sieveCorrect(data)
+    if reduce is not None:
+        # No branching needed, just reducing
+        print('Reducing!')
+        data = reduce
+        continue
+
+    # Reducing doesn't work, need to branch
+
+    # Find all of the coordinates of ^2's in the puzzle (guessing points)
+    guessingpoints = []
+    for xin, row in enumerate(data):
+        for yin, sqr in enumerate(row):
+            if not sqr.solved and len(sqr.possibilities) == 2:
+                guessingpoints.append((xin,yin))
+
+    if len(guessingpoints) == 0:
+        # We've got a problem
+        print('BAD')
+        pass
+
+
+    if str(data) in alreadyTried:
+        p = guessingpoints[0] # We really only have to work with the first guessing point
+        # We've tried p's first guess, so it has to be the second one
+        fill = data[p[0],p[1]].possibilities[1]
+        data[p[0],p[1]].solved = True
+        data[p[0],p[1]].value = fill
+        print('Doing Second Guess')
+        continue
+    else:
+        p = guessingpoints[0]
+        # We're just gonna try p's first guess
+        trying = (p[0],p[1])
+        stack.append(deepcopy(data))
+        fill = data[p[0],p[1]].possibilities[0]
+        data[p[0],p[1]].solved = True
+        data[p[0], p[1]].value = fill
+        print('Doing First Guess')
+        continue
+
+print(data)
+print('Done!!!')
