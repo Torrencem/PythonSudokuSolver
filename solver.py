@@ -188,6 +188,7 @@ def solve(data):
 
 def datfromtext(text):
     text = text.replace(' ','')
+    text = text.replace('\r','')
     if len(text) == 90:
         # Probably a newline at the end...
         text = text[:-1]

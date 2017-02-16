@@ -1,6 +1,7 @@
 from solver import *
 import time
 import poplib
+import imaplib
 import email
 
 def readUserFile():
@@ -59,15 +60,19 @@ def sendSolution(puzzle, add = None):
 
 if __name__ == '__main__':
     while(True):
-        pop_conn = poplib.POP3_SSL('pop.gmail.com')
-        pop_conn.user(gmail_user)
-        pop_conn.pass_(gmail_pwd)
-        # Get messages from server:
-        messages = [pop_conn.retr(i) for i in range(1, len(pop_conn.list()[1]) + 1)]
-        # Concat message pieces:
-        messages = [b"\n".join(mssg[1]) for mssg in messages]
+        mail = imaplib.IMAP4_SSL('imap.gmail.com')
+        mail.login(gmail_user, gmail_pwd)
+        mail.select('inbox')
+        result, data = mail.search(None, 'UnSeen', 'HEADER Subject "solve"')
+        ids = data[0]
+        for num in data[0].split():
+            mail.store(num,'+FLAGS','\\Seen')
+        id_list = ids.split()
+        data = [mail.fetch(id_list[i], "(RFC822)")[1] for i in range(len(id_list))]
+        raw_emails = [a[0][1] for a in data]
+        messages = [email.message_from_bytes(r) for r in raw_emails]
         # Parse message intom an email object:
-        messages = [email.message_from_bytes(mssg) for mssg in messages]
+        # messages = [email.message_from_bytes(mssg) for mssg in messages]
         for message in messages:
             subj = str(message['subject'])
             if 'solve' in subj.lower():
@@ -84,5 +89,5 @@ if __name__ == '__main__':
                     raise Exception('No text in message!!')
                 print((puz,rAd))
                 sendSolution(puz, rAd)
-        pop_conn.quit()
+        # pop_conn.quit()
         time.sleep(15)
